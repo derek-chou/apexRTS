@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE log4c SYSTEM "">
+
+<log4c>
+
+	<config>
+		<bufsize>0</bufsize>
+		<debug level="2"/>
+		<nocleanup>0</nocleanup>
+	</config>
+
+	<!-- root category ========================================= -->
+	<!-- <category name="root" priority="notice" appender="myrollingfile"/> -->
+	<!-- <category name="root" priority="warn" appender="myrollingfile"/> -->
+	<!-- <category name="log.std" priority="trace" appender="myrollingfile"/> -->
+	<category name="log.std" priority="trace" appender="myrollingfile"/>
+	<category name="log" priority="trace" appender="stdout"/>
+
+	<appender name="myrollingfile" type="rollingfile" logdir="./log/" prefix="log" layout="dated" rollingpolicy="myrollingpolicy"/>
+	<rollingpolicy name="myrollingpolicy" type="sizewin" maxsize="100000000" maxnum="10"/>
+
+	<!-- default appenders ===================================== -->
+	<appender name="stdout" type="stream" layout="dated"/>
+	<appender name="stderr" type="stream" layout="dated"/>
+	<appender name="syslog" type="syslog" layout="basic"/>
+
+	<!-- default layouts ======================================= -->
+	<layout name="basic" type="basic"/>
+	<!-- <layout name="dated" type="dated"/> -->
+	<layout name="dated" type="dated_local_r"/>
+</log4c>
