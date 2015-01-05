@@ -178,11 +178,11 @@ void updateQuoteT_R (char *mid, char *pid, char *lastPrice)
 	char *errMsg;
 
 	sqlite3_exec (db, "begin;", 0, 0, &errMsg);
-	long double dPrice =strtold (lastPrice, NULL);
+	long double dPrice = strtold (lastPrice, NULL);
 
 	char sqlStr[2048] = {0x00};
-	snprintf (sqlStr, 2048, "insert or replace into quote(mid, pid, last_price) "
-			"values('%s', '%s', %LF);", mid, pid, dPrice);
+	snprintf (sqlStr, 2048, "update quote set last_price=%LF where mid='%s' and pid='%s';", 
+			dPrice, mid, pid);
 	rc = sqlite3_exec (db, sqlStr, 0, 0, &errMsg);
 	LOG_TRACE (gLog, "%s", sqlStr);
 	if (rc != SQLITE_OK)
