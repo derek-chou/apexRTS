@@ -151,7 +151,6 @@ void updateQuoteR (char *mid, char *pid, char *lastPrice, char *lastQty, char *s
 
 	sqlite3_exec (db, "begin;", 0, 0, &errMsg);
 	long double dPrice =strtold (lastPrice, NULL);
-	//float price = atof (lastPrice);
 	int qty = atoi (lastQty);
 
 	char sqlStr[2048] = {0x00};
@@ -161,7 +160,34 @@ void updateQuoteR (char *mid, char *pid, char *lastPrice, char *lastQty, char *s
 	LOG_TRACE (gLog, "%s", sqlStr);
 	if (rc != SQLITE_OK)
 	{
-		LOG_ERROR (gLog, "sqlite3_exec update quote fail!! msg=%s, sql=%s", errMsg, sqlStr);
+		LOG_ERROR (gLog, "sqlite3_exec updateQuoteR fail!! msg=%s, sql=%s", errMsg, sqlStr);
+	}
+
+	sqlite3_exec (db, "commit;", 0, 0, &errMsg);
+
+	sqlite3_close (db);
+}
+
+void updateQuoteT_R (char *mid, char *pid, char *lastPrice)
+{
+	sqlite3 *db;
+	int rc;
+	rc = sqlite3_open_v2 ("rts.db", &db, SQLITE_OPEN_READWRITE, NULL);
+	if (rc != 0)
+		LOG_ERROR (gLog, "updateQuoteT_R sqlite3_open_v2 fail!! msg=%s", sqlite3_errmsg (db));
+	char *errMsg;
+
+	sqlite3_exec (db, "begin;", 0, 0, &errMsg);
+	long double dPrice =strtold (lastPrice, NULL);
+
+	char sqlStr[2048] = {0x00};
+	snprintf (sqlStr, 2048, "insert or replace into quote(mid, pid, last_price) "
+			"values('%s', '%s', %LF);", mid, pid, dPrice);
+	rc = sqlite3_exec (db, sqlStr, 0, 0, &errMsg);
+	LOG_TRACE (gLog, "%s", sqlStr);
+	if (rc != SQLITE_OK)
+	{
+		LOG_ERROR (gLog, "sqlite3_exec updateQuoteT_R fail!! msg=%s, sql=%s", errMsg, sqlStr);
 	}
 
 	sqlite3_exec (db, "commit;", 0, 0, &errMsg);
@@ -206,7 +232,7 @@ void updateQuoteT (char *mid, char *pid, char *price, char *qty, char *seq)
 	LOG_TRACE (gLog, "%s", sqlStr);
 	if (rc != SQLITE_OK)
 	{
-		LOG_ERROR (gLog, "sqlite3_exec update quote fail!! msg=%s, sql=%s", errMsg, sqlStr);
+		LOG_ERROR (gLog, "sqlite3_exec updateQuoteT fail!! msg=%s, sql=%s", errMsg, sqlStr);
 	}
 
 	sqlite3_exec (db, "commit;", 0, 0, &errMsg);
@@ -255,10 +281,16 @@ void insertMsg (char *msg, int msgLen)
 	{
 		char price[20] = {0x00};
 		char qty[20] = {0x00};
+		char lastPrice[20] = {0x00};
 		findTagValue (msg,  "21=", price, 20);
 		findTagValue (msg,  "22=", qty, 20);
+		
+		findTagValue (msg,  "407=", lastPrice, 20);
 
 		updateQuoteT (market, symbol, price, qty, seq);
+		//2015/01/05 Tick中修改昨收
+		if (strlen(lastPrice) > 0)
+			updateQuoteT_R (market, symbol, lastPrice);
 	}
 
 	snprintf (&gSqlStr[strlen(gSqlStr)], SQL_STR_SIZE, 

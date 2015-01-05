@@ -215,7 +215,7 @@ void replyThread ()
 		}
 		else
 		{
-			for (i = 1; i < rows; i++)
+			for (i = 1; i < rows+1; i++)
 			{
 				//msg column in 4 position
 				LOG_TRACE (gLog, "%s", result[i*5+4]);
