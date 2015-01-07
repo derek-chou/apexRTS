@@ -139,7 +139,7 @@ void replyThread ()
 			if (strlen (startSeq) == 0)
 				startSeq[0] = '0';
 			snprintf (sqlStr, 512, "select * from quote where mid like '%%%s%%' and pid like '%%%s%%' "
-					"limit %s, 10;", mid, pid, startSeq);
+					"order by mid, pid limit %s, 10;", mid, pid, startSeq);
 		}
 		else
 		{
