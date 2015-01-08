@@ -121,7 +121,7 @@ void replyThread ()
 		sqlite3 *db;
 		char **result;
 		int rows, cols, i;
-		char msg[2048] = {0x00};
+		char msg[20480] = {0x00};
 		char startCondition[30] = {0x00};
 		char endCondition[30] = {0x00};
 		char limitCondition[30] = {0x00};
@@ -134,17 +134,19 @@ void replyThread ()
 			snprintf (startCondition, 30, "and seq >= %s", startSeq);
 
 		char sqlStr[512] = {0x00};
+		if (strlen (pid) == 0)
+			sprintf (pid, "%%");
 		if (strcmp (type, "Q") == 0)
 		{
 			if (strlen (startSeq) == 0)
 				startSeq[0] = '0';
-			snprintf (sqlStr, 512, "select * from quote where mid like '%%%s%%' and pid like '%%%s%%' "
-					"order by mid, pid limit %s, 10;", mid, pid, startSeq);
+			snprintf (sqlStr, 512, "select * from quote where mid like '%%%s%%' and pid like '%s' "
+					"order by mid, pid limit %s, 100;", mid, pid, startSeq);
 		}
 		else
 		{
-			snprintf (sqlStr, 512, "select * from msg where mid like '%%%s%%'	and pid like '%%%s%%' "
-					"and type like '%%%s%%' %s %s order by seq limit %s10;", 
+			snprintf (sqlStr, 512, "select * from msg where mid like '%%%s%%' and pid like '%s' "
+					"and type like '%%%s%%' %s %s order by seq limit %s100;", 
 					mid, pid, type, startCondition, endCondition, limitCondition);
 		}
 		LOG_INFO (gLog, "request sql : %s", sqlStr);
