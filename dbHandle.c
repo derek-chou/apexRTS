@@ -222,11 +222,11 @@ void updateQuoteT (char *mid, char *pid, char *price, char *qty, char *seq)
 				"(select stock_name from quote where mid='%s' and pid ='%s')"
 			");", mid, pid, dPrice, iQty, seq, 
 			mid, pid, mid, pid, mid, pid, mid, pid, mid, pid, mid, pid);
-	snprintf (&sqlStr[strlen (sqlStr)], 128, "update quote set open_price=%LF where mid='%s' and pid='%s' "
+	snprintf (&sqlStr[strlen (sqlStr)], 256, "update quote set open_price=%LF where mid='%s' and pid='%s' "
 			"and open_price is null;", dPrice, mid, pid);
-	snprintf (&sqlStr[strlen (sqlStr)], 128, "update quote set max_price=%LF where mid='%s' and pid='%s' "
+	snprintf (&sqlStr[strlen (sqlStr)], 256, "update quote set max_price=%LF where mid='%s' and pid='%s' "
 			"and (max_price is null or max_price<%LF);", dPrice, mid, pid, dPrice);
-	snprintf (&sqlStr[strlen (sqlStr)], 128, "update quote set min_price=%LF where mid='%s' and pid='%s' "
+	snprintf (&sqlStr[strlen (sqlStr)], 256, "update quote set min_price=%LF where mid='%s' and pid='%s' "
 			"and (min_price is null or min_price>%LF);", dPrice, mid, pid, dPrice);
 	rc = sqlite3_exec (db, sqlStr, 0, 0, &errMsg);
 	LOG_TRACE (gLog, "%s", sqlStr);
