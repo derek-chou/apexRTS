@@ -78,12 +78,18 @@ void dbThread()
 	rc = nn_setsockopt (sub, NN_SUB, NN_SUB_SUBSCRIBE, "", 0);
 	if (rc != 0)
 		LOG_ERROR (gLog, "dbThread nn_setsockopt fail!! msg=%s", strerror (errno));
+
+	int timeout = 1000;
+	rc = nn_setsockopt (sub, NN_SUB, NN_RCVTIMEO, &timeout, sizeof (timeout));
+	if (rc != 0)
+		LOG_ERROR (gLog, "dbThread nn_setsockopt rcv timeout fail!! msg=%s", strerror (errno));
 	rc = nn_connect (sub, NANOMSG_PUB_URL);
 	if (rc < 0)
 		LOG_ERROR (gLog, "dbThread nn_connect fail!! msg=%s", strerror (errno));
 
 	pthread_mutex_init (&mutex, NULL);
 
+	/*
 	struct itimerval t;
 	t.it_interval.tv_usec = 0;
 	t.it_interval.tv_sec = DB_TIMER_INTERVAL;
@@ -95,7 +101,9 @@ void dbThread()
 		return;
 	}
 	signal (SIGALRM, dbFlushTimer);
+	*/
 
+	int flushCount = 0;
 	while(1)
 	{
 		int bytes;
@@ -103,7 +111,7 @@ void dbThread()
 		char buf[1024] = {0x00};
 		//bytes = nn_recv (sub, &buf, NN_MSG, 0);
 		bytes = nn_recv (sub, buf, 1024, 0);
-		if (rc <= 0)
+		if (bytes <= 0)
 			LOG_ERROR (gLog, "dbThread nn_recv fail!! msg=%s", strerror (errno));
 		if (bytes > 0)
 		{
@@ -112,6 +120,12 @@ void dbThread()
 			insertMsg (buf, bytes);
 		}
 		//nn_freemsg (buf);
+
+		if(++flushCount >= 50)
+		{
+			dbFlushTimer (0);
+			flushCount = 0;
+		}
 	}
 }
 
