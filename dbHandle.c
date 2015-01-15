@@ -13,7 +13,7 @@
 #include "common.h"
 #include "log.h"
 
-#define DB_TIMER_INTERVAL 10
+#define DB_TIMER_INTERVAL 30
 #define MAX_QUEUE 40
 #define SQL_STR_SIZE 1024
 
@@ -126,8 +126,8 @@ void clearMarketData (char *market)
 	sqlite3_exec (db, "begin;", 0, 0, &errMsg);
 
 	char clearSql[1024] = {0x00};
-	snprintf (clearSql, 1024, "delete from msg where mid = '%s';"
-			"delete from quote where mid = '%s';", market, market);
+	snprintf (clearSql, 1024, "delete from %c_msg where mid = '%s';"
+			"delete from quote where mid = '%s';", market[0], market, market);
 	rc = sqlite3_exec (db, clearSql, 0, 0, &errMsg);
 	LOG_DEBUG (gLog, "%s", clearSql);
 	if (rc != SQLITE_OK)
@@ -264,7 +264,9 @@ void insertMsg (char *msg, int msgLen)
 	pthread_mutex_lock (&mutex);
 	if ((strcmp (type, "S") == 0) && (strcmp (status, "1") == 0))
 		clearMarketData (market);
+	pthread_mutex_unlock (&mutex);
 
+	pthread_mutex_lock (&mutex);
 	if (strcmp (type, "R") == 0)
 	{
 		char lastPrice[20] = {0x00};
@@ -294,8 +296,8 @@ void insertMsg (char *msg, int msgLen)
 	}
 
 	snprintf (&gSqlStr[strlen(gSqlStr)], SQL_STR_SIZE, 
-			"insert into msg values('%s', '%s', '%s', %s, '%s');", 
-			market, symbol, type, seq, msg);
+			"insert into %c_msg values('%s', '%s', '%s', %s, '%s');", 
+			market[0], market, symbol, type, seq, msg);
 	curQueueSize ++;
 	if (curQueueSize == MAX_QUEUE)
 	{
@@ -334,8 +336,8 @@ int validMsg (char *msg)
 		return -1;
 	}
 
-	snprintf (sqlStr, 512, "select exists(select 1 from msg where mid='%s' "
-			"and pid='%s' and type='R') as ret;", mid, pid);
+	snprintf (sqlStr, 512, "select exists(select 1 from %c_msg where mid='%s' "
+			"and pid='%s' and type='R') as ret;", mid[0], mid, pid);
 	rc = sqlite3_get_table (db, sqlStr, &result, &rows, &cols, 0);
 	if (rc != SQLITE_OK)
 	{

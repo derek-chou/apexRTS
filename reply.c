@@ -10,8 +10,8 @@
 #include "dbHandle.h"
 #include "publish.h"
 
-void rescueTick (int sock, char *pid, char *price, char *qty);
-void rescueQuote (int sock, char *pid, char *price, char *qty);
+void rescueTick (int sock, char *mid, char *pid, char *price, char *qty);
+void rescueQuote (int sock, char *mid, char *pid, char *price, char *qty);
 
 int splitRequest (char *req, char *mid, char *pid, char *type, char *startSeq, char *endSeq)
 {
@@ -90,7 +90,7 @@ void replyThread ()
 
 		if (strcmp (type, "MT") == 0)
 		{
-			rescueTick (rep, pid, startSeq, endSeq);
+			rescueTick (rep, mid, pid, startSeq, endSeq);
 			char retmsg[32] = {0x00};
 			snprintf (retmsg, sizeof (retmsg), "[success]");
 			rc = nn_send (rep, retmsg, strlen (retmsg), 0); 
@@ -104,7 +104,7 @@ void replyThread ()
 		}
 		if (strcmp (type, "MQ") == 0)
 		{
-			rescueQuote (rep, pid, startSeq, endSeq);
+			rescueQuote (rep, mid, pid, startSeq, endSeq);
 			char retmsg[32] = {0x00};
 			snprintf (retmsg, sizeof (retmsg), "[success]");
 			rc = nn_send (rep, retmsg, strlen (retmsg), 0); 
@@ -145,9 +145,9 @@ void replyThread ()
 		}
 		else
 		{
-			snprintf (sqlStr, 512, "select * from msg where mid like '%%%s%%' and pid like '%s' "
+			snprintf (sqlStr, 512, "select * from %c_msg where mid like '%%%s%%' and pid like '%s' "
 					"and type like '%%%s%%' %s %s order by seq limit %s100;", 
-					mid, pid, type, startCondition, endCondition, limitCondition);
+					mid[0], mid, pid, type, startCondition, endCondition, limitCondition);
 		}
 		LOG_INFO (gLog, "request sql : %s", sqlStr);
 
@@ -254,7 +254,7 @@ void getFixNowString (char *buf)
 }
 
 
-void rescueTick (int sock, char *pid, char *price, char *qty)
+void rescueTick (int sock, char *mid, char *pid, char *price, char *qty)
 {
 	sqlite3 *db;
 	int rc, rows, cols, i, j; 
@@ -273,8 +273,8 @@ void rescueTick (int sock, char *pid, char *price, char *qty)
 		return;
 	}
 	//Tick -- get seq, mid
-	snprintf (sqlStr, sizeof (sqlStr), "select seq, mid from msg where pid = '%s' "
-					"order by seq desc limit 1;", pid);
+	snprintf (sqlStr, sizeof (sqlStr), "select seq, mid from %c_msg where pid = '%s' "
+					"order by seq desc limit 1;", mid[0], pid);
 	LOG_INFO (gLog, "rescue sql : %s", sqlStr);
 	rc = sqlite3_get_table (db, sqlStr, &result, &rows, &cols, 0);
 	if (rc != SQLITE_OK)
@@ -330,7 +330,7 @@ void rescueTick (int sock, char *pid, char *price, char *qty)
 	return;
 }
 
-void rescueQuote (int sock, char *pid, char *price, char *qty)
+void rescueQuote (int sock, char *mid, char *pid, char *price, char *qty)
 {
 	sqlite3 *db;
 	int rc, rows, cols, i, j; 
