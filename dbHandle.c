@@ -67,6 +67,7 @@ void dbFlushTimer (int a)
 	pthread_mutex_lock (&mutex);
 	execSql();
 	pthread_mutex_unlock (&mutex);
+	LOG_INFO (gLog, "db flush finish!!");
 }
 void dbThread()
 {
@@ -120,7 +121,7 @@ void clearMarketData (char *market)
 	int rc;
 	rc = sqlite3_open_v2 ("rts.db", &db, SQLITE_OPEN_READWRITE, NULL);
 	if (rc != 0)
-		LOG_ERROR (gLog, "clearMarketDate sqlite3_open_v2 fail!! msg=%s", sqlite3_errmsg (db));
+		LOG_ERROR (gLog, "clearMarketData sqlite3_open_v2 fail!! msg=%s", sqlite3_errmsg (db));
 	char *errMsg;
 
 	sqlite3_exec (db, "begin;", 0, 0, &errMsg);
@@ -138,6 +139,7 @@ void clearMarketData (char *market)
 	sqlite3_exec (db, "commit;", 0, 0, &errMsg);
 
 	sqlite3_close (db);
+	LOG_DEBUG (gLog, "clearMarketData finish!!");
 }
 
 void updateQuoteR (char *mid, char *pid, char *lastPrice, char *lastQty, char *stockName)
