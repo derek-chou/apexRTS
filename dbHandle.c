@@ -315,9 +315,12 @@ void insertMsg (char *msg, int msgLen)
 			updateQuoteT_R (market, symbol, lastPrice);
 	}
 
+	//snprintf (&gSqlStr[strlen(gSqlStr)], SQL_STR_SIZE, 
+	//		"insert into %c_msg values('%s', '%s', '%s', %s, '%s');", 
+	//		market[0], market, symbol, type, seq, msg);
 	snprintf (&gSqlStr[strlen(gSqlStr)], SQL_STR_SIZE, 
-			"insert into %c_msg values('%s', '%s', '%s', %s, '%s');", 
-			market[0], market, symbol, type, seq, msg);
+			"insert into msg values('%s', '%s', '%s', %s, '%s');", 
+			market, symbol, type, seq, msg);
 	curQueueSize ++;
 	if (curQueueSize == MAX_QUEUE)
 	{
