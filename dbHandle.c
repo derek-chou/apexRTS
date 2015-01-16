@@ -80,7 +80,7 @@ void dbThread()
 		LOG_ERROR (gLog, "dbThread nn_setsockopt fail!! msg=%s", strerror (errno));
 
 	int timeout = 1000;
-	rc = nn_setsockopt (sub, NN_SUB, NN_RCVTIMEO, &timeout, sizeof (timeout));
+	rc = nn_setsockopt (sub, 0, NN_RCVTIMEO, &timeout, sizeof (timeout));
 	if (rc != 0)
 		LOG_ERROR (gLog, "dbThread nn_setsockopt rcv timeout fail!! msg=%s", strerror (errno));
 	rc = nn_connect (sub, NANOMSG_PUB_URL);
@@ -112,8 +112,10 @@ void dbThread()
 		//bytes = nn_recv (sub, &buf, NN_MSG, 0);
 		bytes = nn_recv (sub, buf, 1024, 0);
 		if (bytes <= 0)
-			LOG_ERROR (gLog, "dbThread nn_recv fail!! msg=%s", strerror (errno));
-		if (bytes > 0)
+		{
+			LOG_INFO (gLog, "dbThread nn_recv fail!! %d msg=%s", bytes, nn_strerror (errno));
+		}
+		else
 		{
 			//buf[bytes] = 0x00;
 			//printf("db thread : %s\n", buf);
@@ -141,8 +143,10 @@ void clearMarketData (char *market)
 	sqlite3_exec (db, "begin;", 0, 0, &errMsg);
 
 	char clearSql[1024] = {0x00};
-	snprintf (clearSql, 1024, "delete from %c_msg where mid = '%s';"
-			"delete from quote where mid = '%s';", market[0], market, market);
+	//snprintf (clearSql, 1024, "delete from %c_msg where mid = '%s';"
+	//		"delete from quote where mid = '%s';", market[0], market, market);
+	snprintf (clearSql, 1024, "delete from msg where mid = '%s';"
+			"delete from quote where mid = '%s';", market, market);
 	rc = sqlite3_exec (db, clearSql, 0, 0, &errMsg);
 	LOG_DEBUG (gLog, "%s", clearSql);
 	if (rc != SQLITE_OK)
@@ -352,8 +356,10 @@ int validMsg (char *msg)
 		return -1;
 	}
 
-	snprintf (sqlStr, 512, "select exists(select 1 from %c_msg where mid='%s' "
-			"and pid='%s' and type='R') as ret;", mid[0], mid, pid);
+	//snprintf (sqlStr, 512, "select exists(select 1 from %c_msg where mid='%s' "
+	//		"and pid='%s' and type='R') as ret;", mid[0], mid, pid);
+	snprintf (sqlStr, 512, "select exists(select 1 from msg where mid='%s' "
+			"and pid='%s' and type='R') as ret;", mid, pid);
 	rc = sqlite3_get_table (db, sqlStr, &result, &rows, &cols, 0);
 	if (rc != SQLITE_OK)
 	{

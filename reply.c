@@ -145,9 +145,12 @@ void replyThread ()
 		}
 		else
 		{
-			snprintf (sqlStr, 512, "select * from %c_msg where mid like '%%%s%%' and pid like '%s' "
+			//snprintf (sqlStr, 512, "select * from %c_msg where mid like '%%%s%%' and pid like '%s' "
+			//		"and type like '%%%s%%' %s %s order by seq limit %s100;", 
+			//		mid[0], mid, pid, type, startCondition, endCondition, limitCondition);
+			snprintf (sqlStr, 512, "select * from msg where mid like '%%%s%%' and pid like '%s' "
 					"and type like '%%%s%%' %s %s order by seq limit %s100;", 
-					mid[0], mid, pid, type, startCondition, endCondition, limitCondition);
+					mid, pid, type, startCondition, endCondition, limitCondition);
 		}
 		LOG_INFO (gLog, "request sql : %s", sqlStr);
 
@@ -273,8 +276,10 @@ void rescueTick (int sock, char *mid, char *pid, char *price, char *qty)
 		return;
 	}
 	//Tick -- get seq, mid
-	snprintf (sqlStr, sizeof (sqlStr), "select seq, mid from %c_msg where pid = '%s' "
-					"order by seq desc limit 1;", mid[0], pid);
+	//snprintf (sqlStr, sizeof (sqlStr), "select seq, mid from %c_msg where pid = '%s' "
+	//				"order by seq desc limit 1;", mid[0], pid);
+	snprintf (sqlStr, sizeof (sqlStr), "select seq, mid from msg where pid = '%s' "
+					"order by seq desc limit 1;", pid);
 	LOG_INFO (gLog, "rescue sql : %s", sqlStr);
 	rc = sqlite3_get_table (db, sqlStr, &result, &rows, &cols, 0);
 	if (rc != SQLITE_OK)
