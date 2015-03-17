@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include "common.h"
 #include "log.h"
+#include "publish.h"
 
 #define DB_TIMER_INTERVAL 30
 #define MAX_QUEUE 40
@@ -215,6 +216,34 @@ void updateQuoteT_R (char *mid, char *pid, char *lastPrice)
 	sqlite3_close (db);
 }
 
+void updateQuoteT_O (char *mid, char *pid, char *openPrice)
+{
+	sqlite3 *db;
+	int rc;
+	rc = sqlite3_open_v2 ("rts.db", &db, SQLITE_OPEN_READWRITE, NULL);
+	if (rc != 0)
+		LOG_ERROR (gLog, "updateQuoteT_O sqlite3_open_v2 fail!! msg=%s", sqlite3_errmsg (db));
+	char *errMsg;
+
+	sqlite3_exec (db, "begin;", 0, 0, &errMsg);
+	long double dPrice = strtold (openPrice, NULL);
+
+	char sqlStr[2048] = {0x00};
+	snprintf (sqlStr, 2048, "update quote set open_price=%LF, max_price=%LF, min_price=%LF "
+		"where mid='%s' and pid='%s';", 
+		dPrice, dPrice, dPrice, mid, pid);
+	rc = sqlite3_exec (db, sqlStr, 0, 0, &errMsg);
+	LOG_TRACE (gLog, "%s", sqlStr);
+	if (rc != SQLITE_OK)
+	{
+		LOG_ERROR (gLog, "sqlite3_exec updateQuoteT_O fail!! msg=%s, sql=%s", errMsg, sqlStr);
+	}
+
+	sqlite3_exec (db, "commit;", 0, 0, &errMsg);
+
+	sqlite3_close (db);
+}
+
 void updateQuoteT (char *mid, char *pid, char *price, char *qty, char *seq)
 {
 	sqlite3 *db;
@@ -260,6 +289,28 @@ void updateQuoteT (char *mid, char *pid, char *price, char *qty, char *seq)
 	sqlite3_close (db);
 }
 
+void sendQuote (char *mid, char *pid, char *price, char *lastPrice)
+{
+	char msg[512] = {0x00};
+
+	sprintf (&msg[strlen (msg)], "%s%c", "8=FIX.4.2", 0x01);
+	sprintf (&msg[strlen (msg)], "%s%c", "35=Q", 0x01);
+	sprintf (&msg[strlen (msg)], "%s%s%c", "3=", mid, 0x01);
+	sprintf (&msg[strlen (msg)], "%s%s%c", "5=", pid, 0x01);
+	sprintf (&msg[strlen (msg)], "%s%s%c", "407=", lastPrice, 0x01);
+	sprintf (&msg[strlen (msg)], "%s%c", "15007=", 0x01);
+	sprintf (&msg[strlen (msg)], "%s%s%c", "400=", price, 0x01);
+	sprintf (&msg[strlen (msg)], "%s%s%c", "388=", price, 0x01);
+	sprintf (&msg[strlen (msg)], "%s%s%c", "394=", price, 0x01);
+	sprintf (&msg[strlen (msg)], "%s%c", "385=", 0x01);
+	sprintf (&msg[strlen (msg)], "%s%c", "22=", 0x01);
+	sprintf (&msg[strlen (msg)], "%s%c", "15008=", 0x01);
+	sprintf (&msg[strlen (msg)], "%s%c", "15006=", 0x01);
+	sprintf (&msg[strlen (msg)], "%s%c", "10=000", 0x01);
+
+	publish (msg, strlen(msg));
+}
+
 void insertMsg (char *msg, int msgLen)
 {
 	if (!msg) return;
@@ -272,11 +323,13 @@ void insertMsg (char *msg, int msgLen)
 	char type[20] = {0x00};
 	char symbol[20] = {0x00};
 	char status[20] = {0x00};
+	char modifyOpenPrice[2] = {0x00};
 	findTagValue (msg, "3=", market, 20);
 	findTagValue (msg, "34=", seq, 20);
 	findTagValue (msg, "35=", type, 20);
 	findTagValue (msg, "5=", symbol, 20);
 	findTagValue (msg, "15005=", status, 20);
+	findTagValue (msg, "15012=", modifyOpenPrice, 2);
 
 	LOG_TRACE (gLog, "market : %s, symbol : %s, seq : %s, type : %s, status : %s", 
 			market, symbol, seq, type, status);
@@ -310,10 +363,24 @@ void insertMsg (char *msg, int msgLen)
 		findTagValue (msg,  "407=", lastPrice, 20);
 
 		updateQuoteT (market, symbol, price, qty, seq);
-		//2015/01/05 Tick中修改昨收
+		//20150105 Tick中修改昨收
 		if (strlen(lastPrice) > 0)
 			updateQuoteT_R (market, symbol, lastPrice);
+	
+		//20150316 新增15012 tag，用於修正開盤價
+		if (strcmp (modifyOpenPrice, "1") == 0)
+		{
+			updateQuoteT_O (market, symbol, price);
+			sendQuote (market, symbol, price, lastPrice);
+		}
 	}
+
+	if (strcmp (type, "H") == 0)
+	{
+		pthread_mutex_unlock (&mutex);
+		return;
+	}
+
 
 	//snprintf (&gSqlStr[strlen(gSqlStr)], SQL_STR_SIZE, 
 	//		"insert into %c_msg values('%s', '%s', '%s', %s, '%s');", 
@@ -343,8 +410,18 @@ int validMsg (char *msg)
 	findTagValue (msg, "3=", mid, 20);
 	findTagValue (msg, "5=", pid, 20);
 	findTagValue (msg, "35=", type, 20);
+	static int hCnt = 0;
 	if (strcmp (type, "H") == 0)
-		return -1;
+	{
+		hCnt++;
+		if(hCnt >= 3)
+		{
+			hCnt = 0;
+			return 0;
+		}
+		else
+			return -1;
+	}
 	if (strcmp (type, "R") != 0)
 		return 0;
 
